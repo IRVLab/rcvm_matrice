@@ -25,7 +25,9 @@ TASK_TAKEOFF = 4
 TASK_LAND = 6
 
 # Gimbal Mode defs
-
+# The ABS or REL refers to whether the gimbal's position should be set relative to its current position, 
+# or absolute (relative to vehicale frame). The ALL, YAW, ROLL, and PITCH refers to which angles can be controlled.
+# For example if you use ABS_ROLL, you can set Roll relative to vehicle body, and no other angles will change.
 ABS_ALL = 0x00
 ABS_YAW = 0x30
 ABS_ROLL = 0x50
@@ -40,6 +42,15 @@ gimbal_angle_cmd = None
 gimbal_speed_cmd = None
 joy_cmd = None
 
+# Target position lists
+target_x_offset = list()
+target_y_offset = list()
+target_z_offset = list()
+target_yaw_offset = list()
+
+# Error threshold for local position measurements (changes based on hardware/payload/wind conditions)
+position_threshold = 0.1
+
 # Global variables for message data
 last_gimbal = None
 init_gimbal = None
@@ -52,6 +63,7 @@ gaze_tf = None
 
 # This lock will be used to ensure that only 1 RCVM service can be operating at a given time.
 animation_lock = threading.Lock()
+sent = False
 
 '''
     Subscriber callbacks. Pretty much all just assinging the message to a global variable, with any necessary preprocessing.
@@ -68,8 +80,23 @@ def flight_status_cb(msg):
     flight_status = msg
 
 def pos_cb(msg):
-    global local_position
-    local_position = msg
+    global local_position, sent
+    local_position = msg.point
+
+    if len(target_x_offset) > 0:
+        if reachedTargetPosition():
+            sent = False
+            removeFirstTarget()
+        else:
+            if not sent:
+                sent = True
+                msg = Joy()
+                msg.axes.append(target_x_offset - local_position.x)
+                msg.axes.append(target_y_offset - local_position.y)
+                msg.axes.append(target_z_offset)
+                msg.axes.append(target_yaw_offset)
+
+                joy_cmd.publish(msg)
 
 def gps_fix_cb(msg):
     global gps_fix
@@ -120,7 +147,19 @@ def affirmative_handler(req):
             return True
         else:
             #We are at long range, so we need to control the Matrice itself.
-            pass
+            
+            # Here we're just going to add a series of target positions to the lists and then let the position handler deal with it.
+            addTargetPosition(1,0,0,0)
+            addTargetPosition(-1,0,0,0)
+            addTargetPosition(1,0,0,0)
+            addTargetPosition(-1,0,0,0)
+            addTargetPosition(1,0,0,0)
+            addTargetPosition(-1,0,0,0)
+            #This is a series of movements quickly foreward and back, trying to get some pitch motion going.
+
+            return True
+
+
 
 def attention_handler(req):
     global animation_lock
@@ -206,20 +245,85 @@ def negative_handler(req):
     with animation_lock:
         if shortRange():
             #We're in short range, so we need to control the camera gimbal to do our kineme.
-            pass
+            msg = Gimbal()
+            msg.mode = ABS_YAW
+            msg.pitch = 0
+            msg.roll = 0 
+
+            msg.yaw = DEG2RAD(20)
+            gimbal_angle_cmd.publish(msg)
+            sleep(0.1)
+
+            msg.yaw = DEG2RAD(-20)
+            gimbal_angle_cmd.publish(msg)
+            sleep(0.1)
+
+            msg.yaw = DEG2RAD(20)
+            gimbal_angle_cmd.publish(msg)
+            sleep(0.1)
+            
+            msg.yaw = DEG2RAD(-20)
+            gimbal_angle_cmd.publish(msg)
+            sleep(0.1)
+
+            return True
         else:
             #We are at long range, so we need to control the Matrice itself.
-            pass
+
+            # Here we're just going to add a series of target positions to the lists and then let the position handler deal with it.
+            # We can control yaw on the aircraft.
+            addTargetPosition(0,0,0,15)
+            addTargetPosition(0,0,0,-15)
+            addTargetPosition(0,0,0,15)
+            addTargetPosition(0,0,0,-15)
+            addTargetPosition(0,0,0,15)
+            addTargetPosition(0,0,0,-15)
+
+            return True
+
+            
+            
 
 def possibly_handler(req):
     global animation_lock
     with animation_lock:
         if shortRange():
             #We're in short range, so we need to control the camera gimbal to do our kineme.
-            pass
+            msg = Gimbal()
+            msg.mode = ABS_ROLL
+            msg.yaw = 0
+            msg.pitch = 0 
+
+            msg.roll = DEG2RAD(25)
+            gimbal_angle_cmd.publish(msg)
+            sleep(0.1)
+
+            msg.roll = DEG2RAD(-25)
+            gimbal_angle_cmd.publish(msg)
+            sleep(0.1)
+
+            msg.roll = DEG2RAD(25)
+            gimbal_angle_cmd.publish(msg)
+            sleep(0.1)
+            
+            msg.roll = DEG2RAD(-25)
+            gimbal_angle_cmd.publish(msg)
+            sleep(0.1)
+
+            return True
         else:
             #We are at long range, so we need to control the Matrice itself.
-            pass
+            
+            # Here we're just going to add a series of target positions to the lists and then let the position handler deal with it.
+            # This is series of movements left and right, attempting to get some roll going.
+            addTargetPosition(0,1,0,0)
+            addTargetPosition(0,-1,0,0)
+            addTargetPosition(0,1,0,0)
+            addTargetPosition(0,-1,0,0)
+            addTargetPosition(0,1,0,0)
+            addTargetPosition(0,-1,0,0)
+            
+            return True
 
 def repeat_last_handler(req):
     global animation_lock
@@ -251,6 +355,29 @@ def report_battery_handler(req):
 def shortRange():
     global interaction_distance
     return interaction_distance <= 10
+
+def addTargetPosition(x,y,z,yaw):
+    global target_x_offset, target_y_offset, target_z_offset, target_yaw_offset
+
+    target_x_offset.append(x)
+    target_y_offset.append(y)
+    target_z_offset.append(z)
+    target_yaw_offset.append(yaw)
+
+def reachedTargetPosition():
+    global target_x_offset, target_y_offset, target_z_offset, target_yaw_offset
+    global local_position, position_threshold
+
+    return (abs(target_x_offset - local_position.x) < position_threshold) and (abs(target_y_offset - local_position.y) < position_threshold) \
+    and (local_position.z > (target_z_offset - position_threshold)) and (local_position.z < (target_z_offset + position_threshold))
+
+def removeFirstTarget():
+    global target_x_offset, target_y_offset, target_z_offset, target_yaw_offset
+
+    target_x_offset.append(0)
+    target_y_offset.append(0)
+    target_z_offset.append(0)
+    target_yaw_offset.append(0)
 
 def DEG2RAD(deg):
     return deg * (math.pi/180)
