@@ -9,6 +9,8 @@ project(rcvm_matrice)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   dji_sdk
+  std_msgs
+  sensor_msgs
   geometry_msgs
   rcvm_core
   rospy
