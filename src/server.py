@@ -28,14 +28,14 @@ TASK_LAND = 6
 # The ABS or REL refers to whether the gimbal's position should be set relative to its current position, 
 # or absolute (relative to vehicale frame). The ALL, YAW, ROLL, and PITCH refers to which angles can be controlled.
 # For example if you use ABS_ROLL, you can set Roll relative to vehicle body, and no other angles will change.
-ABS_ALL = 0x00
-ABS_YAW = 0x30
-ABS_ROLL = 0x50
-ABS_PITCH = 0x60
-REL_ALL = 0x80
-RELL_YAW = 0xB0
-REL_ROLL = 0xD0
-REL_PITCH = 0xE0
+ABS_ALL   = 0x01
+ABS_YAW   = 0x0D
+ABS_ROLL  = 0x0B
+ABS_PITCH = 0x07
+REL_ALL   = 0x00
+RELL_YAW  = 0x0C
+REL_ROLL  = 0x0A
+REL_PITCH = 0x06
 
 # Publisher definitions
 gimbal_angle_cmd = None
@@ -119,46 +119,45 @@ def gaze_cb(msg):
 '''
 
 def affirmative_handler(req):
-    global animation_lock, gimbal_angle_cmd
-    with animation_lock:
-        if shortRange():
-            #We're in short range, so we need to control the camera gimbal to do our kineme.
-            msg = Gimbal()
-            msg.mode = ABS_PITCH
-            msg.yaw = 0
-            msg.roll = 0 
+    global gimbal_angle_cmd
+    #We're in short range, so we need to control the camera gimbal to do our kineme.
+    msg = Gimbal()
+    msg.ts = 1
 
-            msg.pitch = DEG2RAD(30)
-            gimbal_angle_cmd.publish(msg)
-            sleep(0.1)
+    # Set to 0.
+    msg.mode = ABS_ALL
+    msg.yaw = DEG2RAD(0)
+    msg.pitch = DEG2RAD(0)
+    msg.roll = DEG2RAD(0)
+    gimbal_angle_cmd.publish(msg)
+    sleep(2.0)
+	
+    #Set mode to hold Yaw and ROll angles, Pitch is Absolute.
+    msg.mode = ABS_PITCH
+    msg.pitch = DEG2RAD(30)
+    gimbal_angle_cmd.publish(msg)
+    sleep(1.0)
 
-            msg.pitch = DEG2RAD(-30)
-            gimbal_angle_cmd.publish(msg)
-            sleep(0.1)
+    msg.pitch = DEG2RAD(-60)
+    gimbal_angle_cmd.publish(msg)
+    sleep(1.0)
 
-            msg.pitch = DEG2RAD(30)
-            gimbal_angle_cmd.publish(msg)
-            sleep(0.1)
-            
-            msg.pitch = DEG2RAD(-30)
-            gimbal_angle_cmd.publish(msg)
-            sleep(0.1)
+    msg.pitch = DEG2RAD(60)
+    gimbal_angle_cmd.publish(msg)
+    sleep(1.0)
 
-            return True
-        else:
-            #We are at long range, so we need to control the Matrice itself.
-            
-            # Here we're just going to add a series of target positions to the lists and then let the position handler deal with it.
-            addTargetPosition(1,0,0,0)
-            addTargetPosition(-1,0,0,0)
-            addTargetPosition(1,0,0,0)
-            addTargetPosition(-1,0,0,0)
-            addTargetPosition(1,0,0,0)
-            addTargetPosition(-1,0,0,0)
-            #This is a series of movements quickly foreward and back, trying to get some pitch motion going.
+    msg.pitch = DEG2RAD(-30)
+    gimbal_angle_cmd.publish(msg)
+    sleep(1.0)
 
-            return True
-
+    #Set back to 0.
+    msg.mode = ABS_ALL
+    msg.yaw = DEG2RAD(0)
+    msg.pitch = DEG2RAD(0)
+    msg.roll = DEG2RAD(0)
+    gimbal_angle_cmd.publish(msg)
+	 
+    return True
 
 
 def attention_handler(req):
