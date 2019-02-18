@@ -40,6 +40,7 @@ class GimbalControl(object):
         self.ts = 1
 
         # Define camera action service proxy.
+        rospy.wait_for_service('dji_sdk/camera_action')
         self.cam_action = rospy.ServiceProxy('dji_sdk/camera_action', CameraAction)
 
         # Define publishers.

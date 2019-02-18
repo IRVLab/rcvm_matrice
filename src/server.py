@@ -312,6 +312,9 @@ def removeFirstTarget():
     target_z_offset.append(0)
     target_yaw_offset.append(0)
 
+'''
+    Main RCVM initialization.
+'''
 if __name__ == "__main__":
     rospy.init_node('rcvm_server', argv=None, anonymous=True)
     rospy.loginfo('Initializing Matrice 100 RCVM server...')
@@ -320,16 +323,12 @@ if __name__ == "__main__":
     activate = rospy.ServiceProxy('dji_sdk/activation', Activation)
     ctrl_auth = rospy.ServiceProxy('dji_sdk/sdk_control_authority', SDKControlAuthority)
     query_ver = rospy.ServiceProxy('dji_sdk/query_drone_version', QueryDroneVersion)
-    cam_action = rospy.ServiceProxy('dji_sdk/camera_action', CameraAction)
     drone_task = rospy.ServiceProxy('dji_sdk/drone_task_control', DroneTaskControl)
 
     # Publishers
-    gimbal_angle_cmd = rospy.Publisher('/dji_sdk/gimbal_angle_cmd',Gimbal, queue_size=10)
-    gimbal_speed_cmd = rospy.Publisher('/dji_sdk/gimbal_speed_cmd', Vector3Stamped, queue_size=10)
     joy_cmd = rospy.Publisher('/dji_sdk/flight_control_setpoint_ENUposition_yaw', Joy, queue_size=10)
 
     # Subscribers
-    rospy.Subscriber('/dji_sdk/gimbal_angle', Vector3Stamped, gimbal_cb, queue_size=10)
     rospy.Subscriber('/dji_sdk/flight_status', UInt8, flight_status_cb, queue_size=10)
     rospy.Subscriber('/dji_sdk/local_position', PointStamped, pos_cb, queue_size=10)
     rospy.Subscriber('/dji_sdk/gps_position', NavSatFix, gps_fix_cb, queue_size=10)
@@ -378,6 +377,7 @@ if __name__ == "__main__":
 
     rospy.loginfo('   Advertising services...')
 
+    # Initiate Gimbal control structure.
     z3 = gimbal.GimbalControl()
 
     #With the aircraft version and activation confirmed, we can advertise our services.
