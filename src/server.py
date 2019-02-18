@@ -8,12 +8,14 @@ from std_msgs.msg import UInt8
 from geometry_msgs.msg import PointStamped, QuaternionStamped, Vector3Stamped, Transform
 from sensor_msgs.msg import NavSatFix, Joy
 
-from dji_sdk.msg import Gimbal 
-from dji_sdk.srv import Activation,CameraAction, SDKControlAuthority, QueryDroneVersion, DroneTaskControl
-from dji_sdk.srv import ActivationRequest, CameraActionRequest, SDKControlAuthorityRequest, QueryDroneVersionRequest, DroneTaskControlRequest
-from dji_sdk.srv import ActivationResponse, CameraActionResponse, SDKControlAuthorityResponse, QueryDroneVersionResponse, DroneTaskControlResponse
+from dji_sdk.srv import Activation, SDKControlAuthority, QueryDroneVersion, DroneTaskControl
+from dji_sdk.srv import ActivationRequest, SDKControlAuthorityRequest, QueryDroneVersionRequest, DroneTaskControlRequest
+from dji_sdk.srv import ActivationResponse, SDKControlAuthorityResponse, QueryDroneVersionResponse, DroneTaskControlResponse
 
 from rcvm_core.srv import *
+
+import gimbal
+
 
 # Firmware version definitions.
 FIRMWARE_3_1_10 = 50399744
@@ -24,22 +26,7 @@ TASK_GOHOME = 1
 TASK_TAKEOFF = 4
 TASK_LAND = 6
 
-# Gimbal Mode defs
-# The ABS or REL refers to whether the gimbal's position should be set relative to its current position, 
-# or absolute (relative to vehicale frame). The ALL, YAW, ROLL, and PITCH refers to which angles can be controlled.
-# For example if you use ABS_ROLL, you can set Roll relative to vehicle body, and no other angles will change.
-ABS_ALL   = 0x01
-ABS_YAW   = 0x0D
-ABS_ROLL  = 0x0B
-ABS_PITCH = 0x07
-REL_ALL   = 0x00
-RELL_YAW  = 0x0C
-REL_ROLL  = 0x0A
-REL_PITCH = 0x06
-
 # Publisher definitions
-gimbal_angle_cmd = None
-gimbal_speed_cmd = None
 joy_cmd = None
 
 # Target position lists
@@ -52,14 +39,15 @@ target_yaw_offset = list()
 position_threshold = 0.1
 
 # Global variables for message data
-last_gimbal = None
-init_gimbal = None
 flight_status = None
 local_position = None
 gps_fix = None
 gps_health = None
 interaction_distance = None
 gaze_tf = None
+
+# Global variable for gimbal control.
+z3 = None
 
 # This lock will be used to ensure that only 1 RCVM service can be operating at a given time.
 animation_lock = threading.Lock()
@@ -68,13 +56,6 @@ sent = False
 '''
     Subscriber callbacks. Pretty much all just assinging the message to a global variable, with any necessary preprocessing.
 '''
-def gimbal_cb(msg):
-    global last_gimbal, init_gimbal
-    last_gimbal = msg
-
-    if init_gimbal == None:
-        init_gimbal = msg
-
 def flight_status_cb(msg):
     global flight_status
     flight_status = msg
@@ -119,44 +100,14 @@ def gaze_cb(msg):
 '''
 
 def affirmative_handler(req):
-    global gimbal_angle_cmd
-    #We're in short range, so we need to control the camera gimbal to do our kineme.
-    msg = Gimbal()
-    msg.ts = 1
+    global z3
 
-    # Set to 0.
-    msg.mode = ABS_ALL
-    msg.yaw = DEG2RAD(0)
-    msg.pitch = DEG2RAD(0)
-    msg.roll = DEG2RAD(0)
-    gimbal_angle_cmd.publish(msg)
-    sleep(2.0)
-	
-    #Set mode to hold Yaw and ROll angles, Pitch is Absolute.
-    msg.mode = ABS_PITCH
-    msg.pitch = DEG2RAD(30)
-    gimbal_angle_cmd.publish(msg)
-    sleep(1.0)
-
-    msg.pitch = DEG2RAD(-60)
-    gimbal_angle_cmd.publish(msg)
-    sleep(1.0)
-
-    msg.pitch = DEG2RAD(60)
-    gimbal_angle_cmd.publish(msg)
-    sleep(1.0)
-
-    msg.pitch = DEG2RAD(-30)
-    gimbal_angle_cmd.publish(msg)
-    sleep(1.0)
-
-    #Set back to 0.
-    msg.mode = ABS_ALL
-    msg.yaw = DEG2RAD(0)
-    msg.pitch = DEG2RAD(0)
-    msg.roll = DEG2RAD(0)
-    gimbal_angle_cmd.publish(msg)
-	 
+    z3.setMode(gimbal.REL_PITCH)
+    z3.command(0, 30, 0)
+    z3.command(0, -60, 0)
+    z3.command(0, 60, 0)
+    z3.command(0, -30, 0)
+     
     return True
 
 
@@ -240,30 +191,16 @@ def malfunction_handler(req):
             pass
 
 def negative_handler(req):
-    global animation_lock
+    global animation_lock, z3
     with animation_lock:
         if shortRange():
-            #We're in short range, so we need to control the camera gimbal to do our kineme.
-            msg = Gimbal()
-            msg.mode = ABS_YAW
-            msg.pitch = 0
-            msg.roll = 0 
-
-            msg.yaw = DEG2RAD(20)
-            gimbal_angle_cmd.publish(msg)
-            sleep(0.1)
-
-            msg.yaw = DEG2RAD(-20)
-            gimbal_angle_cmd.publish(msg)
-            sleep(0.1)
-
-            msg.yaw = DEG2RAD(20)
-            gimbal_angle_cmd.publish(msg)
-            sleep(0.1)
-            
-            msg.yaw = DEG2RAD(-20)
-            gimbal_angle_cmd.publish(msg)
-            sleep(0.1)
+            z3.setMode(gimbal.RELL_YAW)
+            z3.command(0,0,20)
+            z3.command(0,0,-40)
+            z3.command(0,0,40)
+            z3.command(0,0,-40)
+            z3.command(0,0,40)
+            z3.command(0,0,-20)
 
             return True
         else:
@@ -279,9 +216,6 @@ def negative_handler(req):
             addTargetPosition(0,0,0,-15)
 
             return True
-
-            
-            
 
 def possibly_handler(req):
     global animation_lock
@@ -378,12 +312,6 @@ def removeFirstTarget():
     target_z_offset.append(0)
     target_yaw_offset.append(0)
 
-def DEG2RAD(deg):
-    return deg * (math.pi/180)
-def RAD2DEG(rad):
-    return rad * (180/math.pi)
-    
-
 if __name__ == "__main__":
     rospy.init_node('rcvm_server', argv=None, anonymous=True)
     rospy.loginfo('Initializing Matrice 100 RCVM server...')
@@ -449,6 +377,8 @@ if __name__ == "__main__":
         rospy.logerr('Takeoff unsuccessful.')
 
     rospy.loginfo('   Advertising services...')
+
+    z3 = gimbal.GimbalControl()
 
     #With the aircraft version and activation confirmed, we can advertise our services.
     rospy.Service('/rcvm/affirmative', Affirmative, affirmative_handler)
