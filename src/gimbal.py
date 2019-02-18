@@ -1,5 +1,8 @@
 #! /usr/bin/python 
 
+import math
+from time import sleep
+
 import rospy
 from std_msgs.msg import UInt8
 from geometry_msgs.msg import Vector3Stamped
@@ -54,8 +57,8 @@ class GimbalControl(object):
     # Send the relevent gimbal command (in degrees) and sleeps until the command is finished.
     def command(self, roll=0, pitch=0, yaw=0, m=None, t=None):
         # Set mode and time variables.
-        ts = self.ts if t == None else ts = t
-        mode = self.mode if m == None else mode = m
+        ts = (self.ts if t == None else t)
+        mode = (self.mode if m == None else m)
             
         # Initialize gimbal structure.
         msg = Gimbal()
@@ -96,13 +99,14 @@ class GimbalControl(object):
 
     # Take a picture with the camera.
     def takePicture(self):
+	self.cam_action(0)
     
     # Start a video with the camera.
     def startVideo(self):
         self.cam_action(1)
 
     # End the current video with the camera.
-    def endVideo(self);
+    def endVideo(self):
         self.cam_action(2)
 
 
@@ -110,5 +114,5 @@ class GimbalControl(object):
     def gimbal_cb(self, msg):
         self.current_position = msg
 
-        if self.init_gimbal == None:
-            self.init_gimbal = msg
+        if self.initial_position == None:
+            self.initial_position = msg
