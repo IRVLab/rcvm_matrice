@@ -4,96 +4,17 @@ import sys, math, threading
 from time import sleep
 
 import rospy
-from std_msgs.msg import UInt8
-from geometry_msgs.msg import PointStamped, QuaternionStamped, Vector3Stamped, Transform
-from sensor_msgs.msg import NavSatFix, Joy
-
-from dji_sdk.srv import Activation, SDKControlAuthority, QueryDroneVersion, DroneTaskControl
-from dji_sdk.srv import ActivationRequest, SDKControlAuthorityRequest, QueryDroneVersionRequest, DroneTaskControlRequest
-from dji_sdk.srv import ActivationResponse, SDKControlAuthorityResponse, QueryDroneVersionResponse, DroneTaskControlResponse
-
 from rcvm_core.srv import *
+import gimbal, flight
 
-import gimbal
-
-
-# Firmware version definitions.
-FIRMWARE_3_1_10 = 50399744
-HARDWARE = 'M100'
-
-# Task definitions
-TASK_GOHOME = 1
-TASK_TAKEOFF = 4
-TASK_LAND = 6
-
-# Publisher definitions
-joy_cmd = None
-
-# Target position lists
-target_x_offset = list()
-target_y_offset = list()
-target_z_offset = list()
-target_yaw_offset = list()
-
-# Error threshold for local position measurements (changes based on hardware/payload/wind conditions)
-position_threshold = 0.1
-
-# Global variables for message data
-flight_status = None
-local_position = None
-gps_fix = None
-gps_health = None
-interaction_distance = None
-gaze_tf = None
+# Global variables for flight control
+puffin = None 
 
 # Global variable for gimbal control.
 z3 = None
 
 # This lock will be used to ensure that only 1 RCVM service can be operating at a given time.
 animation_lock = threading.Lock()
-sent = False
-
-'''
-    Subscriber callbacks. Pretty much all just assinging the message to a global variable, with any necessary preprocessing.
-'''
-def flight_status_cb(msg):
-    global flight_status
-    flight_status = msg
-
-def pos_cb(msg):
-    global local_position, sent
-    local_position = msg.point
-
-    if len(target_x_offset) > 0:
-        if reachedTargetPosition():
-            sent = False
-            removeFirstTarget()
-        else:
-            if not sent:
-                sent = True
-                msg = Joy()
-                msg.axes.append(target_x_offset - local_position.x)
-                msg.axes.append(target_y_offset - local_position.y)
-                msg.axes.append(target_z_offset)
-                msg.axes.append(target_yaw_offset)
-
-                joy_cmd.publish(msg)
-
-def gps_fix_cb(msg):
-    global gps_fix
-    gps_fix = msg
-
-def gps_health_cb(msg):
-    global gps_health
-    gps_health = msg
-
-def distance_cb(msg):
-    global interaction_distance
-    interaction_distance = msg.data
-
-def gaze_cb(msg):
-    global gaze_tf
-    gaze_tf = msg
 
 '''
     Service handlers.
@@ -279,69 +200,17 @@ def report_battery_handler(req):
             pass
 
 '''
-    Utility functions and such
-'''
-
-# Checks if the current interaction distance is 10 meters or less, which is
-# considered short range communication. If the distance is greater, we're
-# doing long range communication.
-def shortRange():
-    global interaction_distance
-    return interaction_distance <= 10
-
-def addTargetPosition(x,y,z,yaw):
-    global target_x_offset, target_y_offset, target_z_offset, target_yaw_offset
-
-    target_x_offset.append(x)
-    target_y_offset.append(y)
-    target_z_offset.append(z)
-    target_yaw_offset.append(yaw)
-
-def reachedTargetPosition():
-    global target_x_offset, target_y_offset, target_z_offset, target_yaw_offset
-    global local_position, position_threshold
-
-    return (abs(target_x_offset - local_position.x) < position_threshold) and (abs(target_y_offset - local_position.y) < position_threshold) \
-    and (local_position.z > (target_z_offset - position_threshold)) and (local_position.z < (target_z_offset + position_threshold))
-
-def removeFirstTarget():
-    global target_x_offset, target_y_offset, target_z_offset, target_yaw_offset
-
-    target_x_offset.append(0)
-    target_y_offset.append(0)
-    target_z_offset.append(0)
-    target_yaw_offset.append(0)
-
-'''
     Main RCVM initialization.
 '''
 if __name__ == "__main__":
     rospy.init_node('rcvm_server', argv=None, anonymous=True)
     rospy.loginfo('Initializing Matrice 100 RCVM server...')
 
-    # Services
-    activate = rospy.ServiceProxy('dji_sdk/activation', Activation)
-    ctrl_auth = rospy.ServiceProxy('dji_sdk/sdk_control_authority', SDKControlAuthority)
-    query_ver = rospy.ServiceProxy('dji_sdk/query_drone_version', QueryDroneVersion)
-    drone_task = rospy.ServiceProxy('dji_sdk/drone_task_control', DroneTaskControl)
-
-    # Publishers
-    joy_cmd = rospy.Publisher('/dji_sdk/flight_control_setpoint_ENUposition_yaw', Joy, queue_size=10)
-
-    # Subscribers
-    rospy.Subscriber('/dji_sdk/flight_status', UInt8, flight_status_cb, queue_size=10)
-    rospy.Subscriber('/dji_sdk/local_position', PointStamped, pos_cb, queue_size=10)
-    rospy.Subscriber('/dji_sdk/gps_position', NavSatFix, gps_fix_cb, queue_size=10)
-    rospy.Subscriber('/dji_sdk/gps_health', UInt8, gps_health_cb, queue_size=10)
-
-    # RCVM Subscribers
-    rospy.Subscriber('/rcvm/interaction_distance', UInt8, distance_cb, queue_size=10)
-    rospy.Subscriber('/rcvm/gaze_direction', Transform, gaze_cb, queue_size=10)
+    puffin = FlightControl()
 
     # Check activation
     rospy.loginfo('   Checking activation...')
-    response = activate()
-    if response.result:
+    if puffin.activate():
         rospy.loginfo('      Activation successful.')
     else:
         rospy.logerr('      Activation failed!')
@@ -349,8 +218,8 @@ if __name__ == "__main__":
 
     # Check matrice version
     rospy.loginfo('   Checking drone version...')
-    response = query_ver()
-    if response.version == FIRMWARE_3_1_10 and response.hardware == HARDWARE:
+    response = puffin.querryVersion()
+    if response.version == flight.FIRMWARE_3_1_10 and response.hardware == flight.HARDWARE:
         rospy.loginfo('      Connected to Matrice 100, Firmware version 3.1.10')
     else:
         rospy.logerr('      Hardware or firmware incompatible!')
@@ -359,8 +228,7 @@ if __name__ == "__main__":
     # Request control. 
     #TODO In future, control should only requested when a RCVM service is called.
     rospy.loginfo('   Requesting control...')
-    response = ctrl_auth(1)
-    if response.result:
+    if self.requestControl():
         rospy.loginfo('      Control approved.')
     else:
         rospy.logerr('      Control denied!')
