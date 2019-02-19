@@ -112,31 +112,19 @@ def malfunction_handler(req):
             pass
 
 def negative_handler(req):
-    global animation_lock, z3
+    global animation_lock, z3, puffin
     with animation_lock:
-        if shortRange():
-            z3.setMode(gimbal.RELL_YAW)
-            z3.command(0,0,20)
-            z3.command(0,0,-40)
-            z3.command(0,0,40)
-            z3.command(0,0,-40)
-            z3.command(0,0,40)
-            z3.command(0,0,-20)
+#	z3.setMode(gimbal.RELL_YAW)
+#        z3.command(0,0,20)
+#        z3.command(0,0,-40)
+#        z3.command(0,0,40)
+#        z3.command(0,0,-40)
+#        z3.command(0,0,40)
+#        z3.command(0,0,-20)
 
-            return True
-        else:
-            #We are at long range, so we need to control the Matrice itself.
+        puffin.addTargetPosition(10,20,5,0)
 
-            # Here we're just going to add a series of target positions to the lists and then let the position handler deal with it.
-            # We can control yaw on the aircraft.
-            addTargetPosition(0,0,0,15)
-            addTargetPosition(0,0,0,-15)
-            addTargetPosition(0,0,0,15)
-            addTargetPosition(0,0,0,-15)
-            addTargetPosition(0,0,0,15)
-            addTargetPosition(0,0,0,-15)
-
-            return True
+        return True
 
 def possibly_handler(req):
     global animation_lock
@@ -206,19 +194,12 @@ if __name__ == "__main__":
     rospy.init_node('rcvm_server', argv=None, anonymous=True)
     rospy.loginfo('Initializing Matrice 100 RCVM server...')
 
-    puffin = FlightControl()
-
-    # Check activation
-    rospy.loginfo('   Checking activation...')
-    if puffin.activate():
-        rospy.loginfo('      Activation successful.')
-    else:
-        rospy.logerr('      Activation failed!')
-        sys.exit()
+    puffin = flight.FlightControl()
+    rospy.on_shutdown(puffin.land)
 
     # Check matrice version
     rospy.loginfo('   Checking drone version...')
-    response = puffin.querryVersion()
+    response = puffin.queryVersion()
     if response.version == flight.FIRMWARE_3_1_10 and response.hardware == flight.HARDWARE:
         rospy.loginfo('      Connected to Matrice 100, Firmware version 3.1.10')
     else:
@@ -228,7 +209,7 @@ if __name__ == "__main__":
     # Request control. 
     #TODO In future, control should only requested when a RCVM service is called.
     rospy.loginfo('   Requesting control...')
-    if self.requestControl():
+    if puffin.requestControl():
         rospy.loginfo('      Control approved.')
     else:
         rospy.logerr('      Control denied!')
@@ -237,11 +218,15 @@ if __name__ == "__main__":
     # Take off aircraft
     # TODO In future, just check if the aircraft is airborn before each kineme, and use short range versions if it has not.
     rospy.loginfo('   Taking off!')
-    response = drone_task(TASK_TAKEOFF)
-    if response.result:
+    if puffin.takeoff():
         rospy.loginfo('Takeoff successful!')
     else:
         rospy.logerr('Takeoff unsuccessful.')
+
+    if puffin.setLocalPose():
+	rospy.loginfo('Set Local Pose Reference successfully.')
+    else:
+	rospy.logerr('Failed to set local pose reference.')
 
     rospy.loginfo('   Advertising services...')
 
