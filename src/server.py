@@ -3,7 +3,7 @@
 import sys, math, threading
 from time import sleep
 
-import rospy
+import rospy, tf
 from rcvm_core.srv import *
 import gimbal, flight
 
@@ -23,6 +23,7 @@ animation_lock = threading.Lock()
 def affirmative_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
+        z3.reset()
         z3.setMode(gimbal.REL_PITCH)
         z3.command(0, 30, 0)
         z3.command(0, -50, 0)
@@ -52,13 +53,17 @@ def attention_handler(req):
 def danger_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
-        matrice.goToBodyTarget(pitch=0.25, duration=2)
+        matrice.goToBodyTarget(pitch=0.25, duration=2, post_sleep=1)
+
+        z3.reset()
+        z3.setMode(gimbal.REL_YAW)
         z3.command(0,0,60)
         z3.command(0,0,-120)
         z3.command(0,0,120)
         z3.command(0,0,-120)
         z3.command(0,0,60)
-        matrice.goToBodyTarget(yaw=1.0, duration=4, post_sleep=1)
+
+        matrice.goToBodyTarget(yaw=1.0, duration=3, post_sleep=1)
         matrice.goToBodyTarget(pitch=0.25, duration=2)
         
         return True
@@ -68,12 +73,17 @@ def follow_me_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
         matrice.goToBodyTarget(yaw=1.0, duration=1, post_sleep=1 )
-        z3.command(0,0,60)
-        z3.command(0,0,-10)
-        z3.command(0,0,10)
-        z3.command(0,0,-10)
-        z3.command(0,0, 10)
-        matrice.goToBodyTarget(yaw=1.0, duration=3)
+
+        z3.reset()
+        z3.setMode(gimbal.REL_YAW)
+        z3.command(0,0,120)
+        z3.command(0,0,-30)
+        z3.command(0,0,-30)
+        z3.command(0,0,-30)
+        z3.command(0,0,30)
+        z3.reset()
+
+        matrice.goToBodyTarget(yaw=1.0, duration=1, post_sleep=1)
         matrice.goToBodyTarget(pitch=0.25, duration=2, post_sleep=1 )
         
         return True
@@ -98,19 +108,23 @@ def indicate_object_handler(req):
     global animation_lock, z3, matrice
 
     q = req.relative_orientation
-    rads = euler_from_quaternion([q.x, q.y, q.z, q.w])
+    rads = tf.transformations.euler_from_quaternion([q.x, q.y, q.z, q.w])
     roll  = int(flight.RAD2DEG(rads[0]))
     pitch = int(flight.RAD2DEG(rads[1]))
     yaw   = int(flight.RAD2DEG(rads[2]))
 
     with animation_lock:
         matrice.goToBodyTarget(yaw=1.0, duration=int(yaw/30.0))
+
+        z3.reset()
+        z3.setMode(gimbal.REL_ALL)
         z3.command(0,pitch,0)
         z3.command(0,-pitch,0)
         z3.command(0,0,-yaw)
         sleep(2)
         z3.command(0,pitch,yaw)
         z3.command(0,0)
+
         matrice.goToBodyTarget(yaw=-1.0, duration=int(yaw/30.0))
         
         return True
@@ -118,15 +132,15 @@ def indicate_object_handler(req):
 def indicate_stay_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
-        matrice.goToBodyTarget(pitch=0.25, duration=2, post_sleep=1)
-        matrice.goToBodyTarget(roll=0.25, duration=2, post_sleep=1)
-        matrice.goToBodyTarget(pitch=-0.25, duration=2, post_sleep=1)
-        matrice.goToBodyTarget(roll=-0.25, duration=2, post_sleep=1)
+        matrice.goToBodyTarget(pitch=0.25, duration=1, post_sleep=1)
+        matrice.goToBodyTarget(roll=0.25, duration=1, post_sleep=1)
+        matrice.goToBodyTarget(pitch=-0.25, duration=1, post_sleep=1)
+        matrice.goToBodyTarget(roll=-0.25, duration=1, post_sleep=1)
 
-        matrice.goToBodyTarget(pitch=0.25, duration=2, post_sleep=1)
-        matrice.goToBodyTarget(roll=0.25, duration=2, post_sleep=1)
-        matrice.goToBodyTarget(pitch=-0.25, duration=2, post_sleep=1)
-        matrice.goToBodyTarget(roll=-0.25, duration=2, post_sleep=1)
+        matrice.goToBodyTarget(pitch=0.25, duration=1, post_sleep=1)
+        matrice.goToBodyTarget(roll=0.25, duration=1, post_sleep=1)
+        matrice.goToBodyTarget(pitch=-0.25, duration=1, post_sleep=1)
+        matrice.goToBodyTarget(roll=-0.25, duration=1, post_sleep=1)
         
         return True
 
@@ -138,6 +152,8 @@ def lost_handler(req):
 def malfunction_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
+        z3.reset()
+        z3.setMode(gimbal.REL_PITCH)
         z3.command(0,-90,0)
         matrice.goToBodyTarget(yaw=0.1, dz= -0.1, duration=6)
         
@@ -147,7 +163,8 @@ def malfunction_handler(req):
 def negative_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
-        z3.setMode(gimbal.RELL_YAW)
+        z3.reset()
+        z3.setMode(gimbal.REL_YAW)
         z3.command(0,0,20)
         z3.command(0,0,-40)
         z3.command(0,0,40)
@@ -160,6 +177,7 @@ def negative_handler(req):
 def possibly_handler(req):
     global animation_lock, z3, matrice    
     with animation_lock:
+        z3.reset()
         z3.setMode(gimbal.REL_ROLL)
         z3.command(20, 0, 0 )
         z3.command(-40, 0, 0)
@@ -172,10 +190,14 @@ def repeat_last_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
         matrice.goToBodyTarget(yaw=1.0, duration=1 )
-        z3.command(25, 0, 10)
+
+        z3.reset()
+        z3.setMode(gimbal.REL_ALL)
+        z3.command(25, 0, 20)
         sleep(2)
-        matrice.goToBodyTarget(yaw=-11.0, duration=1)
-        z3.command(-25, 0, -10)
+
+        matrice.goToBodyTarget(yaw=-1.0, duration=1)
+        z3.command(-25, 0, -20)
         
         return True
 
@@ -186,8 +208,7 @@ def report_battery_handler(req):
         matrice.goToBodyTarget(dz=1.0, duration=5)
         matrice.goToBodyTarget(dz=-1.0, duration=5)
         matrice.goToBodyTarget(yaw=-1.0, duration=5)
-        
-        
+               
         return True
 
 '''
