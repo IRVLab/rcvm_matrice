@@ -97,12 +97,12 @@ class FlightControl(object):
         while not self.reachedPosition(x,y,z):
             sleep(1)
 
-    def goToBodyTarget(self, roll=0, pitch=0, z=0, yawrate=0, duration=1, post_sleep=0):
+    def goToBodyTarget(self, roll=0, pitch=0, dz=0, yaw=0, duration=1, post_sleep=0):
         msg = Joy()
         msg.axes.append(roll)
         msg.axes.append(pitch)
-        msg.axes.append(z)
-        msg.axes.append(yawrate)
+        msg.axes.append(dz)
+        msg.axes.append(yaw)
 
         counter = 0
 
