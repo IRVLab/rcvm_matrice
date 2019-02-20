@@ -59,7 +59,8 @@ class FlightControl(object):
         self.yaw_threshold = 1
 
         # Flight control publisher
-        self.control = rospy.Publisher('/dji_sdk/flight_control_setpoint_ENUposition_yaw', Joy, queue_size=10)
+        self.local_control = rospy.Publisher('/dji_sdk/flight_control_setpoint_ENUposition_yaw', Joy, queue_size=10)
+        self.body_control = rospy.Publisher('/dji_sdk/flight_control_setpoint_rollpitch_yawrate_zposition', Joy, queue_size=10)
 
 
         # Flight status and location info.
@@ -85,17 +86,36 @@ class FlightControl(object):
         self.drone_task = rospy.ServiceProxy('dji_sdk/drone_task_control', DroneTaskControl)
         self.set_pose_ref = rospy.ServiceProxy('dji_sdk/set_local_pos_ref', SetLocalPosRef)
 
-    def goToTarget(self, x=0,y=0,z=0,yaw=0):
+    def goToLocalTarget(self, x=0,y=0,z=0,yaw=0):
         msg = Joy()
-        msg.axes.append(x) #- self.local_position.x)
-        msg.axes.append(y)# - self.local_position.y)
+        msg.axes.append(x - self.local_position.x)
+        msg.axes.append(y - self.local_position.y)
         msg.axes.append(z)
         msg.axes.append(yaw)
 
-        self.control.publish(msg)
-        sleep(10)
-    #    while not self.reachedPosition(x,y,z):
-     #       sleep(1)
+        self.local_control.publish(msg)
+        while not self.reachedPosition(x,y,z):
+            sleep(1)
+
+    def goToBodyTarget(self, roll=0, pitch=0, z=0, yawrate=0, duration=1, post_sleep=0):
+        msg = Joy()
+        msg.axes.append(roll)
+        msg.axes.append(pitch)
+        msg.axes.append(z)
+        msg.axes.append(yawrate)
+
+        counter = 0
+
+        rate = rospy.Rate(5)
+        while not rospy.is_shutdown():
+            self.body_control.publish(msg)
+            rate.sleep()
+            counter += 1
+            if counter >= (duration * 5):
+                break
+
+        sleep(post_sleep)
+        return 
 
     # Checks whether or not you have reached the target local postion.
     def reachedPosition(self, x, y, z):

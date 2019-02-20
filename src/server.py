@@ -35,10 +35,15 @@ def affirmative_handler(req):
 def attention_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
-        matrice.goToTarget(0,0,0,90)
-        matrice.goToTarget(0,0,0,-90)
-        matrice.goToTarget(0,0,0,90)
-        matrice.goToTarget(0,0,0,-90)
+        matrice.goToBodyTarget(0,0,0,-1.0,1,1)
+        matrice.goToBodyTarget(0,0,0,1.0,2,1)
+        matrice.goToBodyTarget(0,0,0,-1.00,1,1)
+
+        sleep(2)
+
+        matrice.goToBodyTarget(0,0,0,1.0,1,1)
+        matrice.goToBodyTarget(0,0,0,-1.0,2,1)
+        matrice.goToBodyTarget(0,0,0,1.0,1,1)
 
         return True
 
