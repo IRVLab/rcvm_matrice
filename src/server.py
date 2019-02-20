@@ -101,7 +101,7 @@ def indicate_movement_handler(req):
                 matrice.goToTarget(0, -2, 0, 0)
                 matrice.goToTarget(0, 2, 0, 0)
                 return True
-            elif y == -1
+            elif y == -1:
                 matrice.goToTarget(0, -2, 0, 0)
                 matrice.goToTarget(0, 2, 0, 0)
                 matrice.goToTarget(0, -2, 0, 0)
@@ -242,12 +242,12 @@ if __name__ == "__main__":
         sys.exit()
 
     # Set up the local opsition reference.
-    if matrice.setLocalPose():
-	    rospy.loginfo('Set Local Pose Reference successfully.')
-    else:
-	    rospy.logerr('Failed to set local pose reference.')
-        matrice.land()
-        sys.exit()
+#    if matrice.setLocalPose():
+#	rospy.loginfo('Set Local Pose Reference successfully.')
+#    else:
+#	rospy.logerr('Failed to set local pose reference.')
+#        matrice.land()
+#        sys.exit()
 
     rospy.loginfo('   Advertising services...')
 

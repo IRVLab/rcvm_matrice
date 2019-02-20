@@ -66,7 +66,7 @@ class FlightControl(object):
         self.flight_status = None
         self.flight_anomaly = None
         self.local_position = None
-	    self.attitude = None
+        self.attitude = None
         self.gps_fix = None
         self.gps_health = None
 
@@ -83,19 +83,19 @@ class FlightControl(object):
         self.ctrl_auth = rospy.ServiceProxy('dji_sdk/sdk_control_authority', SDKControlAuthority)
         self.query_ver = rospy.ServiceProxy('dji_sdk/query_drone_version', QueryDroneVersion)
         self.drone_task = rospy.ServiceProxy('dji_sdk/drone_task_control', DroneTaskControl)
-	    self.set_pose_ref = rospy.ServiceProxy('dji_sdk/set_local_pos_ref', SetLocalPosRef)
+        self.set_pose_ref = rospy.ServiceProxy('dji_sdk/set_local_pos_ref', SetLocalPosRef)
 
     def goToTarget(self, x=0,y=0,z=0,yaw=0):
         msg = Joy()
-        msg.axes.append(x - self.local_position.x)
-        msg.axes.append(y - self.local_position.y)
+        msg.axes.append(x) #- self.local_position.x)
+        msg.axes.append(y)# - self.local_position.y)
         msg.axes.append(z)
         msg.axes.append(yaw)
 
         self.control.publish(msg)
-
-        while not self.reachedPosition(x,y,z):
-            sleep(1)
+        sleep(10)
+    #    while not self.reachedPosition(x,y,z):
+     #       sleep(1)
 
     # Checks whether or not you have reached the target local postion.
     def reachedPosition(self, x, y, z):
@@ -145,11 +145,11 @@ class FlightControl(object):
     # Do a monitored takeoff.
     def monitoredTakeoff(self):
         raise NotImplementedError
-	
+        
     #Set the local pose reference.
     def setLocalPose(self):
-	    resp = self.set_pose_ref()
-	    return resp.result
+            resp = self.set_pose_ref()
+            return resp.result
 
 
     '''
@@ -164,9 +164,9 @@ class FlightControl(object):
     def pos_cb(self, msg):
         self.local_position = msg.point
 
-    def att_cb(sef, msg):
-        euler = euler_from_quaternion(msg.quaternion)
-        self.attitude = (int(RAD2DEG(euler[0])), int(RAD2DEG(euler[1]), int(RAD2DEG(euler[2]))
+    def att_cb(self, msg):
+        euler = euler_from_quaternion([msg.quaternion.x, msg.quaternion.y, msg.quaternion.z, msg.quaternion.w])
+        self.attitude = (int(RAD2DEG(euler[0])), int(RAD2DEG(euler[1])), int(RAD2DEG(euler[2])))
 
     def gps_fix_cb(self, msg):
         self.gps_fix = msg
