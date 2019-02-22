@@ -23,14 +23,6 @@ REL_YAW  = 0x0C
 REL_ROLL  = 0x0A
 REL_PITCH = 0x06
 
-# degree to radians and radian to degrees functions.
-def DEG2RAD(deg):
-    return deg * (math.pi/180)
-
-def RAD2DEG(rad):
-    return rad * (180/math.pi)
-
-
 '''
     The GimbalControl class is used to manage gimbal operations.
 '''
@@ -66,9 +58,9 @@ class GimbalControl(object):
         # Fill message structure.
         msg.mode    = mode
         msg.ts      = ts
-        msg.roll    = DEG2RAD(roll)
-        msg.pitch   = DEG2RAD(pitch)
-        msg.yaw     = DEG2RAD(yaw)
+        msg.roll    = math.radians(roll)
+        msg.pitch   = math.radians(pitch)
+        msg.yaw     = math.radians(yaw)
 
         # Publish message and sleep until it's done.
         self.angle_cmd.publish(msg)
@@ -77,9 +69,9 @@ class GimbalControl(object):
     # Set the camera gimbal rotations speed in degrees/second.
     def setSpeed(self, roll=15, pitch=15, yaw=15):
         msg = Vector3Stamped()
-        msg.vector.y = DEG2RAD(roll)
-        msg.vector.x = DEG2RAD(pitch)
-        msg.vector.z = DEG2RAD(yaw)
+        msg.vector.y = roll
+        msg.vector.x = pitch
+        msg.vector.z = yaw
 
         self.speed_cmd.publish(msg)
 
@@ -93,9 +85,9 @@ class GimbalControl(object):
 
     # Reset gimbal to it's original positon.
     def reset(self):
-        if self.initial_position != None:
-            self.command(self.initial_position.vector.y, self.initial_position.vector.x, self.initial_position.vector.z, m=ABS_ALL, t=5)
-
+        self.setSpeed(90,90,90)
+        self.command(0,0,0, m=ABS_ALL, t=1)
+        self.setSpeed()
 
     # Take a picture with the camera.
     def takePicture(self):

@@ -25,6 +25,8 @@ def affirmative_handler(req):
     with animation_lock:
         z3.reset()
         z3.setMode(gimbal.REL_PITCH)
+        z3.setSpeed(0,60,0)
+
         z3.command(0, 30, 0)
         z3.command(0, -50, 0)
         z3.command(0, 50, 0)
@@ -35,6 +37,7 @@ def affirmative_handler(req):
 
 # Rotate twice with a pause in between.
 def attention_handler(req):
+    return False
     global animation_lock, z3, matrice
     with animation_lock:
         matrice.goToBodyTarget(yaw = -1.0, duration = 1, post_sleep= 1)
@@ -53,18 +56,18 @@ def attention_handler(req):
 def danger_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
-        matrice.goToBodyTarget(pitch=0.25, duration=2, post_sleep=1)
 
         z3.reset()
+
         z3.setMode(gimbal.REL_YAW)
+        z3.setSpeed(yaw=60)
         z3.command(0,0,60)
         z3.command(0,0,-120)
         z3.command(0,0,120)
         z3.command(0,0,-120)
         z3.command(0,0,60)
 
-        matrice.goToBodyTarget(yaw=1.0, duration=3, post_sleep=1)
-        matrice.goToBodyTarget(pitch=0.25, duration=2)
+        z3.reset()
         
         return True
 
@@ -175,6 +178,7 @@ def negative_handler(req):
         return True
 
 def possibly_handler(req):
+    return False
     global animation_lock, z3, matrice    
     with animation_lock:
         z3.reset()
@@ -202,6 +206,7 @@ def repeat_last_handler(req):
         return True
 
 def report_battery_handler(req):
+    return False
     global animation_lock, z3, matrice
     with animation_lock:
         matrice.goToBodyTarget(yaw=1.0, duration=5)
@@ -241,13 +246,13 @@ if __name__ == "__main__":
 
     # Take off aircraft
     # TODO In future, just check if the aircraft is airborn before each kineme, and use short range versions if it has not.
-    rospy.loginfo('   Taking off!')
-    if matrice.takeoff():
-        rospy.loginfo('Takeoff successful!')
-    else:
-        rospy.logerr('Takeoff unsuccessful.')
-        matrice.land()
-        sys.exit()
+#    rospy.loginfo('   Taking off!')
+#    if matrice.takeoff():
+#        rospy.loginfo('Takeoff successful!')
+#    else:
+#        rospy.logerr('Takeoff unsuccessful.')
+#        matrice.land()
+#        sys.exit()
 
     # Set up the local opsition reference.
 #    if matrice.setLocalPose():
@@ -261,6 +266,7 @@ if __name__ == "__main__":
 
     # Initiate Gimbal control structure.
     z3 = gimbal.GimbalControl()
+    z3.reset()
 
     #With the aircraft version and activation confirmed, we can advertise our services.
     rospy.Service('/rcvm/affirmative', Affirmative, affirmative_handler)
