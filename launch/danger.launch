@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find rcvm_danger)/launch/rcvm.launch"/>
+  <include file="$(find rcvm_danger)/launch/rcvm_record.launch"/>
+	<node pkg="rosservice" type="rosservice" name="rcvm" args="call --wait /rcvm/danger"/>
+</launch>
+

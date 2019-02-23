@@ -1,0 +1,4 @@
+<launch>
+	<node pkg="rosbag" type="record" name="rosbag_record_rcvm_trials"
+       args="record -o /data/rcvm /dji_sdk/gimbal_angle /dji_sdk/gimbal_angle_cmd /dji_sdk/gimbal_speed_cmd"/>
+</launch>
