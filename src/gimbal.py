@@ -4,8 +4,8 @@ import math
 from time import sleep
 
 import rospy
-from std_msgs.msg import UInt8
-from geometry_msgs.msg import Vector3Stamped
+from std_msgs.msg import UInt8, Header
+from geometry_msgs.msg import Vector3Stamped, Vector3
 
 from dji_sdk.msg import Gimbal 
 from dji_sdk.srv import CameraAction, CameraActionRequest, CameraActionResponse
@@ -28,10 +28,19 @@ REL_PITCH = 0x06
 '''
 class GimbalControl(object):
     def __init__(self):
-        self.initial_position = None
+        
+        if rospy.has_param('/gimbal_initial_position/x/'):
+            self.initial_position = Vector3()
+            self.initial_position.x = rospy.get_param('/gimbal_initial_position/x/',None)
+            self.initial_position.y = rospy.get_param('/gimbal_initial_position/y/',None)
+            self.initial_position.z = rospy.get_param('/gimbal_initial_position/z/',None)
+        else:
+            self.initial_position = None
+
+
         self.current_position = None
 
-        self.mode = ABS_ALL
+        self.mode = REL_ALL
         self.ts = 1
 
         # Define camera action service proxy.
@@ -69,11 +78,12 @@ class GimbalControl(object):
     # Set the camera gimbal rotations speed in degrees/second.
     def setSpeed(self, roll=15, pitch=15, yaw=15):
         msg = Vector3Stamped()
-        msg.vector.y = roll
-        msg.vector.x = pitch
-        msg.vector.z = yaw
+        msg.vector.y = math.radians(roll)
+        msg.vector.x = math.radians(pitch)
+        msg.vector.z = math.radians(yaw)
 
         self.speed_cmd.publish(msg)
+        sleep(1)
 
     # Sets the gimbal mode for control.
     def setMode(self, mode):
@@ -85,9 +95,8 @@ class GimbalControl(object):
 
     # Reset gimbal to it's original positon.
     def reset(self):
-        self.setSpeed(90,90,90)
-        self.command(0,0,0, m=ABS_ALL, t=1)
-        self.setSpeed()
+        self.command(0, 0, 0, m=ABS_ALL, t=1)
+        sleep(1)
 
     # Take a picture with the camera.
     def takePicture(self):
@@ -104,7 +113,10 @@ class GimbalControl(object):
 
     # Gimbal callback function.
     def gimbal_cb(self, msg):
-        self.current_position = msg
+        self.current_position = msg.vector
 
         if self.initial_position == None:
-            self.initial_position = msg
+            self.initial_position = msg.vector
+            rospy.set_param('/gimbal_initial_position/x/', msg.vector.x)
+            rospy.set_param('/gimbal_initial_position/y/', msg.vector.y)
+            rospy.set_param('/gimbal_initial_position/z/', msg.vector.z)

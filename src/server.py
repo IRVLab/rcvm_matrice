@@ -24,7 +24,6 @@ def affirmative_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
         z3.setMode(gimbal.REL_PITCH)
-        z3.setSpeed(0,60,0)
 
         z3.command(0, 30, 0)
         z3.command(0, -50, 0)
@@ -56,7 +55,6 @@ def danger_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
         z3.setMode(gimbal.REL_YAW)
-        z3.setSpeed(yaw=60)
         z3.command(0,0,30)
         sleep(1)
         z3.command(0,0,-60)
@@ -65,33 +63,31 @@ def danger_handler(req):
         sleep(1)
         z3.command(0,0,-30)
 
-        z3.setSpeed(yaw=120)
         z3.command(0,0,15)
-        z3.command(0,0,-15)
-        z3.command(0,0,15)
-        z3.command(0,0,-15)
-        z3.command(0,0,15)
-        z3.command(0,0,-15)
-        z3.command(0,0,15)
+        z3.command(0,0,-30)
+        z3.command(0,0,30)
+        z3.command(0,0,-30)
+        z3.command(0,0,30)
+        z3.command(0,0,-30)
+        z3.command(0,0,30)
         z3.command(0,0,-15)
 
         z3.reset()
-        
+
         return True
 
 # Turn slight, beckon (gimbal), turn fully around, move away.
 def follow_me_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
-        z3.setMode(gimbal.REL_YAW)
+        z3.setMode(gimbal.REL_ALL)
         z3.command(0,0,100)
         sleep(1)
-        z3.command(0,0,-30)
-        z3.command(0,0, 30)
-        z3.command(0,0,-30)
-        z3.command(0,0, 30)
-        sleep(1)
-        z3.command(0,0,-100)
+        z3.command(0,0,-60)
+        z3.command(25,0, 40)
+        z3.command(-25,0,-40)
+        z3.command(25,0, 100)
+        sleep(2)
 
         z3.reset()
         
@@ -105,14 +101,20 @@ def indicate_movement_handler(req):
     y = movement_vector.y
 
     pitch_amount = 15
-    yaw_amount = 30
+    yaw_amount = 50
+
+    z3.setMode(gimbal.REL_ALL)
 
     with animation_lock:
         z3.command(0, (x*pitch_amount), (y*yaw_amount))
         sleep(1)
+        z3.command(25,0,0)
+        z3.command(-25,0,0)
         z3.command(0, -(x*pitch_amount), -(y*yaw_amount))
         z3.command(0, (x*pitch_amount), (y*yaw_amount))
         sleep(1)
+        z3.command(25,0,0)
+        z3.command(-25,0,0)
         z3.command(0, -(x*pitch_amount), -(y*yaw_amount))
         z3.reset()
 
@@ -130,11 +132,11 @@ def indicate_object_handler(req):
 
     with animation_lock:
         z3.setMode(gimbal.ABS_ALL)
-        z3.command(0,pitch,yaw)
-        z3.command(0,-pitch,0)
-        z3.command(0,pitch,0)
+        z3.command(0,-pitch,yaw)
+        sleep(1)
+        z3.command(0,pitch,z3.current_position.z)
+        z3.command(0,-pitch,z3.current_position.z)
         sleep(2)
-        z3.command(0,-pitch,-yaw)
         z3.reset()
         
         return True
@@ -143,12 +145,11 @@ def indicate_stay_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
         z3.setMode(gimbal.REL_YAW)
-        z3.setSpeed(15,15,15)
 
-        z3.command(0,0, 105,t=5)
-        z3.command(0,0,-205,t=10)
-        z3.command(0,0, 205,t=10)
-        z3.command(0,0,-105,t=5)
+        z3.command(0,0, 105,t=2)
+        z3.command(0,0,-205,t=3)
+        z3.command(0,0, 205,t=3)
+        z3.command(0,0,-105,t=2)
         z3.reset()
         
         return True
@@ -164,8 +165,8 @@ def malfunction_handler(req):
         z3.setMode(gimbal.REL_ALL)
         z3.command(0,-90,0)
         z3.command(0,0, 180, t=5)
-        z3.command(0,0,-360, t=10)
-        z3.command(0,0, 180, t=5)
+        sleep(2)
+        z3.command(0,0, -180, t=5)
         z3.reset()
 
         return True
@@ -204,10 +205,9 @@ def repeat_last_handler(req):
 
         z3.reset()
         z3.setMode(gimbal.REL_ALL)
-        z3.command(25, 0, 20)
-        sleep(2)
+        z3.command(45, 0, 40)
+        sleep(4)
 
-        z3.command(-25, 0, -20)
         z3.reset()
         
         return True
@@ -273,7 +273,6 @@ if __name__ == "__main__":
 
     # Initiate Gimbal control structure.
     z3 = gimbal.GimbalControl()
-    z3.reset()
 
     #With the aircraft version and activation confirmed, we can advertise our services.
     rospy.Service('/rcvm/affirmative', Affirmative, affirmative_handler)
