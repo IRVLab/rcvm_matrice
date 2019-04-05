@@ -100,7 +100,7 @@ class GimbalControl(object):
 
     # Take a picture with the camera.
     def takePicture(self):
-	self.cam_action(0)
+        self.cam_action(0)
     
     # Start a video with the camera.
     def startVideo(self):

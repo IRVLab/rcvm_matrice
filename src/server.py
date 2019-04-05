@@ -186,19 +186,6 @@ def negative_handler(req):
 
         return True
 
-def possibly_handler(req):
-    return False
-#     global animation_lock, z3, matrice    
-#     with animation_lock:
-#         z3.reset()
-#         z3.setMode(gimbal.REL_ROLL)
-#         z3.command(20, 0, 0 )
-#         z3.command(-40, 0, 0)
-#         z3.command(40, 0, 0)
-#         z3.command(-20, 0, 0)
-        
-#         return True
-
 def repeat_last_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
@@ -285,7 +272,7 @@ if __name__ == "__main__":
     rospy.Service('/rcvm/lost', Lost, lost_handler)
     rospy.Service('/rcvm/malfunction', Malfunction, malfunction_handler)
     rospy.Service('/rcvm/negative', Negative, negative_handler)
-    rospy.Service('/rcvm/possibly', Possibly, possibly_handler)
+
     rospy.Service('/rcvm/repeat_last', RepeatLast, repeat_last_handler)
     rospy.Service('/rcvm/report_battery', ReportBattery, report_battery_handler)
 
