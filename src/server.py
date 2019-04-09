@@ -35,33 +35,29 @@ def affirmative_handler(req):
 
 # Rotate twice with a pause in between.
 def attention_handler(req):
-    return False
-#     global animation_lock, z3, matrice
-#     with animation_lock:
-#         matrice.goToBodyTarget(yaw = -1.0, duration = 1, post_sleep= 1)
-#         matrice.goToBodyTarget(yaw = 1.0, duration= 2, post_sleep = 1)
-#         matrice.goToBodyTarget(yaw = -1.0, duration = 1, post_sleep = 1)
-
-#         sleep(2)
-
-#         matrice.goToBodyTarget(yaw = -1.0, duration = 1, post_sleep= 1)
-#         matrice.goToBodyTarget(yaw = 1.0, duration= 2, post_sleep = 1)
-#         matrice.goToBodyTarget(yaw = -1.0, duration = 1, post_sleep = 1)
-
-#         return True
+    global animation_lock, z3, matrice
+    with animation_lock:
+        z3.setMode(gimbal.REL_ALL)
+        z3.command(60,0,0)
+        z3.command(-120,0,0)
+        z3.command(120,0,0)
+        z3.command(-120,0,0)
+        z3.command(120,0,0)
+        z3.command(-60,0,0)
+        z3.reset()
 
 # Move forward, (gimbal) look around, turn around, move away.
 def danger_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
         z3.setMode(gimbal.REL_YAW)
-        z3.command(0,0,30)
+        z3.command(0,0,45)
         sleep(1)
-        z3.command(0,0,-60)
+        z3.command(0,0,-90)
         sleep(1)
-        z3.command(0,0,60)
+        z3.command(0,0,90)
         sleep(1)
-        z3.command(0,0,-30)
+        z3.command(0,0,-45)
 
         z3.command(0,0,15)
         z3.command(0,0,-30)
@@ -157,7 +153,37 @@ def indicate_stay_handler(req):
 def lost_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
-        return False
+        z3.setMode(gimbal.REL_ALL)
+        z3.command(0,0,90)        
+        z3.command(15,0,0)
+        z3.command(0,10,0)
+        z3.command(-15,0,0)
+        z3.command(0,-10,0)
+        z3.command(-15,0,0)
+        z3.command(0,-10,0)
+        z3.command(15,0,0)
+        z3.command(0,10,0)
+        sleep(1)
+
+        z3.command(0,0,-180)
+        z3.command(15,0,0)
+        z3.command(0,10,0)
+        z3.command(-15,0,0)
+        z3.command(0,-10,0)
+        z3.command(-15,0,0)
+        z3.command(0,-10,0)
+        z3.command(15,0,0)
+        z3.command(0,10,0)
+        sleep(1)
+
+        z3.command(0,0,90)
+
+        z3.command(0,0,15)
+        z3.command(0,0,-30)
+        z3.command(0,0,30)
+        z3.command(0,0,-15)
+        z3.reset()
+        return True
 
 def malfunction_handler(req):
     global animation_lock, z3, matrice
