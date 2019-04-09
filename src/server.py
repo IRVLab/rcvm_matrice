@@ -226,15 +226,18 @@ def repeat_last_handler(req):
         return True
 
 def report_battery_handler(req):
-    return False
-#     global animation_lock, z3, matrice
-#     with animation_lock:
-#         matrice.goToBodyTarget(yaw=1.0, duration=5)
-#         matrice.goToBodyTarget(dz=1.0, duration=5)
-#         matrice.goToBodyTarget(dz=-1.0, duration=5)
-#         matrice.goToBodyTarget(yaw=-1.0, duration=5)
-               
-#         return True
+    global animation_lock, z3, matrice
+    with animation_lock:
+        z3.setMode(gimbal.REL_ALL)
+
+        #TODO: The portion the gimbal returns before pitch and roll to flat is the percentage of battery it has
+        z3.command(15, 15, 60)
+        sleep(1)
+        z3.command(0,0,-30)
+        z3.command(-15,-15,0)
+        sleep(2)
+        z3.reset()
+        return True
 
 '''
     Main RCVM initialization.
