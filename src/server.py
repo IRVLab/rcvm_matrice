@@ -77,13 +77,12 @@ def follow_me_handler(req):
     global animation_lock, z3, matrice
     with animation_lock:
         z3.setMode(gimbal.REL_ALL)
-        z3.command(0,0,100)
-        sleep(1)
-        z3.command(0,0,-60)
         z3.command(25,0, 40)
         z3.command(-25,0,-40)
-        z3.command(25,0, 100)
-        sleep(2)
+        z3.command(25,0,40)
+        z3.command(-25,0,-40)
+        z3.command(25,0, 120)
+        sleep(5)
 
         z3.reset()
         
@@ -130,6 +129,7 @@ def indicate_object_handler(req):
         z3.setMode(gimbal.ABS_ALL)
         z3.command(0,-pitch,yaw)
         sleep(1)
+        z3.setMode(gimbal.ABS_PITCH)
         z3.command(0,pitch,z3.current_position.z)
         z3.command(0,-pitch,z3.current_position.z)
         sleep(2)
@@ -289,6 +289,7 @@ if __name__ == "__main__":
 
     # Initiate Gimbal control structure.
     z3 = gimbal.GimbalControl()
+    z3.reset()
 
     #With the aircraft version and activation confirmed, we can advertise our services.
     rospy.Service('/rcvm/affirmative', Affirmative, affirmative_handler)
