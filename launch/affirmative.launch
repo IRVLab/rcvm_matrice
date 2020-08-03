@@ -1,6 +1,5 @@
 <launch>
   <include file="$(find rcvm_matrice)/launch/rcvm.launch"/>
-  <include file="$(find rcvm_matrice)/launch/rcvm_record.launch"/>
 	<node pkg="rosservice" type="rosservice" name="rcvm" args="call --wait /rcvm/affirmative"/>
 </launch>
 
