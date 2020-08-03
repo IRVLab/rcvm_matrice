@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>rcvm_matrice</name>
-  <version>0.1.0</version>
-  <description>Implementation of the RCVM kinemes for the Matrice 100.</description>
+  <version>1.0.0</version>
+  <description>Implementation of the Robot Communication Via Motion (RCVM) kinemes for the Matrice 100 using a Z3 camera gimbal.</description>
 
   <maintainer email="fulto081@umn.edu">Michael Fulton</maintainer>
 
   <license>MIT</license>
 
-  <url type="website">https://github.umn.edu/fulto081/rcvm_matrice</url>
+  <url type="website">https://github.umn.edu/fultonms/rcvm_matrice</url>
 
   <author email="fulto081@umn.edu">Michael Fulton</author>
 
